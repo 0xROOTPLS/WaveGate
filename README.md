@@ -2,10 +2,9 @@
 WaveGate is an "advanced", visually appealing remote access tool with a plethora of features for the operator.
 
 # Disclaimer
-- WaveGate is in very early stages of development (1.0) - Please expect potentialy catestrophic bugs. I did my best to ensure each module works, but the codebase got so large its hard to keep all the gears working together.
+- WaveGate is in very early stages of development (1.0) - **Please expect potentialy catestrophic bugs aand/or incomplete feature implementation**. I did my best to ensure each module works, but the codebase got so large its hard to keep all the gears working together.
 - WaveGate clients were not designed to be evasive. It is probably very signaturable.
 - WaveGate was made for the community, and for those who want a great resource for offensive Rust-based RAT features.
-- WaveGate may have some incomplete features.
 
 # Features
 - **Remote Shell**: Interactive streamed shell sessions with input/output forwarding.
