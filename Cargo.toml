@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = [
+    "WaveGate",
+    "shared",
+    "client",
+]
+
+# Release profile optimizations (primarily for client binary size)
+[profile.release]
+strip = true          # Strip symbols from binary
+lto = true            # Link Time Optimization
+codegen-units = 1     # Single codegen unit for better optimization
+opt-level = "z"       # Optimize for size
+panic = "abort"       # Abort on panic (removes unwinding code)

